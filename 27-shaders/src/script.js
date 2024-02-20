@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import GUI from 'lil-gui'
+import vertexShader from './shaders/test/vertex.glsl';
+import fragmentShader from './shaders/test/fragment.glsl';
 
 /**
  * Base
@@ -18,6 +20,7 @@ const scene = new THREE.Scene()
  * Textures
  */
 const textureLoader = new THREE.TextureLoader()
+const flagTexture = textureLoader.load('/textures/flag-french.jpg');
 
 /**
  * Test mesh
@@ -25,11 +28,37 @@ const textureLoader = new THREE.TextureLoader()
 // Geometry
 const geometry = new THREE.PlaneGeometry(1, 1, 32, 32)
 
+// count of vertices
+const count = geometry.attributes.position.count;
+const randoms = new Float32Array(count);
+
+for (let i = 0; i < count; i++) {
+    randoms[i] = Math.random();
+}
+// a prefix for for attributes
+// u prefix for uniform
+// v prefix for varying
+geometry.setAttribute('aRandom', new THREE.BufferAttribute(randoms, 1));
+
 // Material
-const material = new THREE.MeshBasicMaterial()
+const material = new THREE.RawShaderMaterial({
+    vertexShader: vertexShader,
+    fragmentShader: fragmentShader,
+    uniforms: {
+        uFrequency: { value: new THREE.Vector2(10, 5) },
+        uTime: { value: 0 },
+        uColor: { value: new THREE.Color('orange') },
+        uTexture: { value: flagTexture }
+    }
+});
+
+gui.add(material.uniforms.uFrequency.value, 'x', 0, 20, 1).name('frequencyX');
+gui.add(material.uniforms.uFrequency.value, 'y', 0, 20, 1).name('frequencyY');
+// gui.addColor(material.uniforms.uColor.value, 'color');
 
 // Mesh
 const mesh = new THREE.Mesh(geometry, material)
+mesh.scale.y = 2/3;
 scene.add(mesh)
 
 /**
@@ -84,6 +113,9 @@ const clock = new THREE.Clock()
 const tick = () =>
 {
     const elapsedTime = clock.getElapsedTime()
+
+    // Update material
+    material.uniforms.uTime.value = elapsedTime;
 
     // Update controls
     controls.update()
