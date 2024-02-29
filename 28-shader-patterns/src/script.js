@@ -26,7 +26,10 @@ const geometry = new THREE.PlaneGeometry(1, 1, 32, 32)
 const material = new THREE.ShaderMaterial({
     vertexShader: testVertexShader,
     fragmentShader: testFragmentShader,
-    side: THREE.DoubleSide
+    side: THREE.DoubleSide,
+    uniforms: {
+        uTime: { value: 0 }
+    }
 })
 
 // Mesh
@@ -80,8 +83,12 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 /**
  * Animate
  */
+const clock = new THREE.Clock()
 const tick = () =>
 {
+    const elapsedTime = clock.getElapsedTime()
+    material.uniforms.uTime.value = elapsedTime;
+
     // Update controls
     controls.update()
 
