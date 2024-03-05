@@ -11,4 +11,9 @@ void main()
 
     // SIZE
     gl_PointSize = uSize * aScale;
+    // apply size attenuation as in the three.js docs
+    // so particles close to screen are bigger
+    // 1.0 is the `scale`
+    // `viewPosition` is the mvPosition aka movelViewPosition
+    gl_PointSize *= (1.0 / - viewPosition.z);
 }
