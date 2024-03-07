@@ -2,6 +2,8 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import GUI from 'lil-gui'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import holographicVertexShader from './shaders/holographic/vertex.glsl';
+import holographicFragmentShader from './shaders/holographic/fragment.glsl';
 
 /**
  * Base
@@ -75,7 +77,14 @@ gui
 /**
  * Material
  */
-const material = new THREE.ShaderMaterial()
+const material = new THREE.ShaderMaterial({
+    vertexShader: holographicVertexShader,
+    fragmentShader: holographicFragmentShader,
+    uniforms: {
+        uTime: new THREE.Uniform(0)
+    },
+    transparent: true
+})
 
 /**
  * Objects
@@ -118,17 +127,19 @@ const clock = new THREE.Clock()
 const tick = () => {
     const elapsedTime = clock.getElapsedTime()
 
-    // Rotate objects
-    if (suzanne) {
-        suzanne.rotation.x = - elapsedTime * 0.1
-        suzanne.rotation.y = elapsedTime * 0.2
-    }
+    material.uniforms.uTime.value = elapsedTime;
 
-    sphere.rotation.x = - elapsedTime * 0.1
-    sphere.rotation.y = elapsedTime * 0.2
-
-    torusKnot.rotation.x = - elapsedTime * 0.1
-    torusKnot.rotation.y = elapsedTime * 0.2
+    //Rotate objects
+    //    if (suzanne) {
+    //        suzanne.rotation.x = - elapsedTime * 0.1
+    //        suzanne.rotation.y = elapsedTime * 0.2
+    //    }
+    //
+    //    sphere.rotation.x = - elapsedTime * 0.1
+    //    sphere.rotation.y = elapsedTime * 0.2
+    //
+    //    torusKnot.rotation.x = - elapsedTime * 0.1
+    //    torusKnot.rotation.y = elapsedTime * 0.2
 
     // Update controls
     controls.update()
