@@ -5,9 +5,12 @@ varying vec3 vPosition;
 
 #include ../includes/ambientLight.glsl
 #include ../includes/directionalLight.glsl
+#include ../includes/pointLight.glsl
 
 void main()
 {
+    // Avoid artifacts on the interpolation of the texture normals
+    vec3 normal = normalize(vNormal);
     // To make the difference between two vectors we subtract them
     // more information at the 40 minutes of the class
     // also, we need the direction (normalized), not the position (can be hudeO)
@@ -27,10 +30,32 @@ void main()
     light += directionalLight(
         vec3(0.1, 0.1, 1.0), // Light color
         1.0,                 // Light intensity
-        vNormal,             // Normal
+        normal,             // Normal
         vec3(0.0, 0.0, 3.0), // Light position
         viewDirection,       // View Direction
         20.0                 // Specular power
+    );
+
+    light += pointLight(
+        vec3(1.0, 0.1, 0.1), // Light color
+        1.0,                 // Light intensity
+        normal,              // Normal
+        vec3(0.0, 2.5, 0.0), // Light position
+        viewDirection,       // View Direction
+        20.0,                // Specular power
+        vPosition,           // Fragment position
+        0.25                 // Light decay
+    );
+
+    light += pointLight(
+        vec3(0.1, 1.0, 0.5), // Light color
+        1.0,                 // Light intensity
+        normal,              // Normal
+        vec3(2.0, 2.0, 2.0), // Light position
+        viewDirection,       // View Direction
+        20.0,                // Specular power
+        vPosition,           // Fragment position
+        0.2                  // Light decay
     );
 
     // We dont add the light to the color, the objects `color` must be `multiplied`

@@ -131,6 +131,7 @@ gltfLoader.load(
 /**
  * LIGHT HELPERS
  */
+// Directional light helper
 const directionalLightHelper = new THREE.Mesh(
     new THREE.PlaneGeometry(),
     new THREE.MeshBasicMaterial({
@@ -141,6 +142,24 @@ const directionalLightHelper = new THREE.Mesh(
 directionalLightHelper.position.set(0, 0, 3);
 scene.add(directionalLightHelper);
 
+// Point light helper
+const pointLightHelper = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.1, 2),
+    new THREE.MeshBasicMaterial({
+        color: new THREE.Color(1, 0.1, 0.1),
+    })
+);
+pointLightHelper.position.set(0, 2.5, 0);
+scene.add(pointLightHelper);
+
+const pointLightHelper2 = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.1, 2),
+    new THREE.MeshBasicMaterial({
+        color: new THREE.Color(0.1, 1.0, 0.5),
+    })
+);
+pointLightHelper2.position.set(2, 2, 2);
+scene.add(pointLightHelper2);
 /**
  * Animate
  */
