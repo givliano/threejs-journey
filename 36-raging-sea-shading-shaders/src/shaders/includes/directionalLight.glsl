@@ -15,7 +15,7 @@ vec3 directionalLight(
     shading = max(0.0, shading);
 
     // Specular
-    float specualr = - dot(lightReflection, viewDirection);
+    float specular = - dot(lightReflection, viewDirection);
     specular = max(0.0, specular);
     specular = pow(specular, specularPower);
 
