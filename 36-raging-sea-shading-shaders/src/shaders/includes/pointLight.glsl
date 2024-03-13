@@ -19,13 +19,13 @@ vec3 pointLight(
     shading = max(0.0, shading);
 
     // Specular
-    float specualr = - dot(lightReflection, viewDirection);
+    float specular = - dot(lightReflection, viewDirection);
     specular = max(0.0, specular);
     specular = pow(specular, specularPower);
 
     // Decay
     float decay = 1.0 - lightDistance * lightDecay;
-    decay = mac(0.0, decay);
+    decay = max(0.0, decay);
 
     return lightColor * lightIntensity * decay * (shading + specular);
 }
