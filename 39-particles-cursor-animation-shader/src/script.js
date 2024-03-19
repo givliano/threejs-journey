@@ -67,9 +67,41 @@ renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(sizes.pixelRatio)
 
 /**
+ * Displacement
+ */
+// Everything for the canvas element
+const displacement = {};
+
+// 2D canvas
+displacement.canvas = document.createElement('canvas');
+// Its not necessary to be the same size as the amount of particles.
+// It can be less, but it doens't make sense to be more because it waster performance.
+displacement.canvas.width = 128;
+displacement.canvas.height = 128;
+displacement.canvas.style.position = 'fixed';
+displacement.canvas.style.width = '512px';
+displacement.canvas.style.heigth = '512px';
+displacement.canvas.style.top = 0;
+displacement.canvas.style.left = 0;
+displacement.canvas.style.zIndex = 10;
+document.body.append(displacement.canvas);
+
+// Context
+displacement.context = displacement.canvas.getContext('2d');
+// FIll the canvas rect
+displacement.context.fillRect(0, 0, displacement.canvas.width, displacement.canvas.height);
+
+// GLow image
+// add it via native JS because THREE injects a lot of unecessary code for this simple usecase
+displacement.glowImage = new Image()
+displacement.glowImage.src = './glow.png';
+displacement.glowImage.onload = () => {
+    displacement.context.drawImage(displacement.glowImage, 20, 20, 32, 32); // x, y, width, height
+}
+/**
  * Particles
  */
-const particlesGeometry = new THREE.PlaneGeometry(10, 10, 32, 32)
+const particlesGeometry = new THREE.PlaneGeometry(10, 10, 128, 128);
 
 const particlesMaterial = new THREE.ShaderMaterial({
     vertexShader: particlesVertexShader,
@@ -77,6 +109,7 @@ const particlesMaterial = new THREE.ShaderMaterial({
     uniforms:
     {
         uResolution: new THREE.Uniform(new THREE.Vector2(sizes.width * sizes.pixelRatio, sizes.height * sizes.pixelRatio)),
+        uPictureTexture: new THREE.Uniform(textureLoader.load('./picture-1.png')) // any picture, small, grayscale and square
     }
 })
 const particles = new THREE.Points(particlesGeometry, particlesMaterial)
