@@ -18,7 +18,6 @@ void main()
     // Sun ORIENTATION
     // How much the face of the mesh is oriented towards the sun direction
     float sunOrientation = dot(uSunDirection, normal);
-    color = vec3(sunOrientation);
 
     // Day / night color
     float dayMix = smoothstep(- 0.25, 0.5, sunOrientation);

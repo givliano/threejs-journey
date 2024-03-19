@@ -3,6 +3,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import GUI from 'lil-gui'
 import earthVertexShader from './shaders/earth/vertex.glsl'
 import earthFragmentShader from './shaders/earth/fragment.glsl'
+import atmosphereVertexShader from './shaders/atmosphere/vertex.glsl'
+import atmosphereFragmentShader from './shaders/atmosphere/fragment.glsl'
 
 /**
  * Base
@@ -28,11 +30,17 @@ earthParameters.atmosphereTwilightColor = 0xff6600;
 
 gui
     .addColor(earthParameters, 'atmosphereDayColor')
-    .onChange(() => earthMaterial.uniforms.uAtmosphereDayColor.value.set(earthParameters.atmosphereDayColor));
+    .onChange(() => {
+        earthMaterial.uniforms.uAtmosphereDayColor.value.set(earthParameters.atmosphereDayColor);
+        atmosphereMaterial.uniforms.uAtmosphereDayColor.value.set(earthParameters.atmosphereDayColor);
+    });
 
 gui
     .addColor(earthParameters, 'atmosphereTwilightColor')
-    .onChange(() => earthMaterial.uniforms.uAtmosphereTwilightColor.value.set(earthParameters.atmosphereTwilightColor));
+    .onChange(() => {
+        earthMaterial.uniforms.uAtmosphereTwilightColor.value.set(earthParameters.atmosphereTwilightColor);
+        atmosphereMaterial.uniforms.uAtmosphereTwilightColor.value.set(earthParameters.atmosphereTwilightColor);
+    });
 
 // Textures
 // we add an Anisotropic filter, the higher the value, the sharper the texture
@@ -67,6 +75,27 @@ const earthMaterial = new THREE.ShaderMaterial({
 const earth = new THREE.Mesh(earthGeometry, earthMaterial)
 scene.add(earth)
 
+
+// ATMOSPHERE
+// the atmosphere will be created by using a sphere slightly bigger,
+// only showing the back side of the sphere, and fading the edge with fresnel
+// the color is the same as the one on Earth shader
+const atmosphereMaterial = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    transparent: true,
+    vertexShader: atmosphereVertexShader,
+    fragmentShader: atmosphereFragmentShader,
+    uniforms:
+    {
+        uSunDirection: new THREE.Uniform(new THREE.Vector3(0, 0, 1)),
+        uAtmosphereDayColor: new THREE.Uniform(new THREE.Color(earthParameters.atmosphereDayColor)),
+        uAtmosphereTwilightColor: new THREE.Uniform(new THREE.Color(earthParameters.atmosphereTwilightColor))
+    }
+});
+
+const atmosphere = new THREE.Mesh(earthGeometry, atmosphereMaterial);
+atmosphere.scale.set(1.04, 1.04, 1.04);
+scene.add(atmosphere);
 /**
  * Sun
  */
@@ -95,6 +124,7 @@ const updateSun = () => {
 
     // Uniforms
     earthMaterial.uniforms.uSunDirection.value.copy(sunDirection); // also already normalized
+    atmosphereMaterial.uniforms.uSunDirection.value.copy(sunDirection); // also already normalized
 };
 updateSun();
 
