@@ -78,12 +78,12 @@ displacement.canvas = document.createElement('canvas');
 // It can be less, but it doens't make sense to be more because it waster performance.
 displacement.canvas.width = 128;
 displacement.canvas.height = 128;
-displacement.canvas.style.position = 'fixed';
-displacement.canvas.style.width = '512px';
-displacement.canvas.style.heigth = '512px';
-displacement.canvas.style.top = 0;
-displacement.canvas.style.left = 0;
-displacement.canvas.style.zIndex = 10;
+// displacement.canvas.style.position = 'fixed';
+// displacement.canvas.style.width = '512px';
+// displacement.canvas.style.heigth = '512px';
+// displacement.canvas.style.top = 0;
+// displacement.canvas.style.left = 0;
+// displacement.canvas.style.zIndex = 10;
 document.body.append(displacement.canvas);
 
 // Context
@@ -94,7 +94,7 @@ displacement.context.fillRect(0, 0, displacement.canvas.width, displacement.canv
 // GLow image
 // add it via native JS because THREE injects a lot of unecessary code for this simple usecase
 displacement.glowImage = new Image()
-displacement.glowImage.src = './glow.png';
+displacement.glowImage.src = './lula-preto-e-branco.png';
 displacement.glowImage.onload = () => {
     displacement.context.drawImage(displacement.glowImage, 20, 20, 32, 32); // x, y, width, height
 }
@@ -107,7 +107,7 @@ displacement.glowImage.onload = () => {
 // but it has to be the same size
 displacement.interactivePlane = new THREE.Mesh(
     new THREE.PlaneGeometry(10, 10),
-    new THREE.MeshBasicMaterial({ color: 'red' })
+    new THREE.MeshBasicMaterial({ color: 'red', side: THREE.DoubleSide })
 );
 displacement.interactivePlane.visible = false;
 scene.add(displacement.interactivePlane);
@@ -118,6 +118,7 @@ displacement.raycaster = new THREE.Raycaster();
 // Coordinates
 displacement.screenCursor = new THREE.Vector2(9999, 9999); // move the cursor to outside the screen
 displacement.canvasCursor = new THREE.Vector2(9999, 9999); // move the cursor to outside the screen
+displacement.canvasCursorPrevious = new THREE.Vector2(9999, 9999);
 
 // same as mousemove but works in mobile
 window.addEventListener('pointermove', (e) => {
@@ -135,6 +136,11 @@ displacement.texture = new THREE.CanvasTexture(displacement.canvas);
  * Particles
  */
 const particlesGeometry = new THREE.PlaneGeometry(10, 10, 128, 128);
+particlesGeometry.setIndex(null); // stop using the index for the particles, which are a waste  since
+// the indexes are the same for every particle around it (each vertex has 6 repeated indexes);
+// remov ethe useless normal attribute
+// its goot practice to remove useless attributes
+particlesGeometry.deleteAttribute('normal');
 
 const intensitiesArray = new Float32Array(particlesGeometry.attributes.position.count);
 const anglesArray = new Float32Array(particlesGeometry.attributes.position.count);
@@ -150,10 +156,11 @@ particlesGeometry.setAttribute('aAngle', new THREE.BufferAttribute(intensitiesAr
 const particlesMaterial = new THREE.ShaderMaterial({
     vertexShader: particlesVertexShader,
     fragmentShader: particlesFragmentShader,
+    blending: THREE.AdditiveBlending,
     uniforms:
     {
         uResolution: new THREE.Uniform(new THREE.Vector2(sizes.width * sizes.pixelRatio, sizes.height * sizes.pixelRatio)),
-        uPictureTexture: new THREE.Uniform(textureLoader.load('./picture-1.png')), // any picture, small, grayscale and square
+        uPictureTexture: new THREE.Uniform(textureLoader.load('./lula-preto-e-branco.png')), // any picture, small, grayscale and square
         uDisplacementTexture: new THREE.Uniform(displacement.texture),
     }
 })
@@ -200,10 +207,18 @@ const tick = () =>
         displacement.canvas.width, 
         displacement.canvas.height
     );
+
+    // Speed alpha (position delta)
+    // save the last cursor position to calculate the speed
+    const cursorDistance = displacement.canvasCursorPrevious.distanceTo(displacement.canvasCursor);
+    displacement.canvasCursorPrevious.copy(displacement.canvasCursor);
+    const alpha = Math.min(cursorDistance * 0.1, 1); // clamp the value to 0 and 1
+    console.log('fo')
+
     // Draw glow
     const glowSize = displacement.canvas.width * 0.25;
     displacement.context.globalCompositeOperation = 'lighten'; // retains the lightest pixels of the layers
-    displacement.context.globalAlpha = 1;
+    displacement.context.globalAlpha = alpha;
     displacement.context.drawImage(
         displacement.glowImage,
         displacement.canvasCursor.x - glowSize * 0.5, // move the center of the glow to the pointer location

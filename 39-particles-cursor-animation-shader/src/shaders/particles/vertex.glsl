@@ -14,7 +14,8 @@ void main()
     vec3 newPosition = position;
     float displacementIntensity = texture(uDisplacementTexture, uv).r;
     // Ignore everything below 0.1 to avoid the bug from canvas fade off never going full to 0.0
-    displacementIntensity = smoothstep(0.1, 1.0, displacementIntensity);
+    // Also make everything above 0.3 be considered 1.0 so that particles stay up
+    displacementIntensity = smoothstep(0.1, 0.3, displacementIntensity);
 
     // move them on the xyz axes
     vec3 displacement = vec3(
