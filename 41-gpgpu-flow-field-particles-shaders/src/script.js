@@ -7,6 +7,59 @@ import particlesVertexShader from './shaders/particles/vertex.glsl'
 import particlesFragmentShader from './shaders/particles/fragment.glsl'
 
 /**
+ * THEORY
+ *
+ * `GPGPU` stands for `General-Purpose computing on Graphics Processing Units`
+ * It's a way of using the GPU to process data rather than rendering pixels for the end user.
+ * Great for when you need to do the same complex calculations thousands of time
+ *
+ * Use the pixels of the render to calculate data
+ *
+ * `Flow Field` corresponds to spatialized streams
+ * For ani point in space, we calculate a direction.
+ * And streams can be interpreted like a `wind` force
+ *
+ * A PROBLEM: the data needs to be persisted accross all the particles, because
+ * it is unpredictable.
+ *
+ * We can save it on a `Frame Buffer Object (FBO)`, which are textures.
+ * We can save the renders in this textures instead of doing it on the `<canvas>`
+ * When we do a render for a classic `WebGL` website we put it in a `canvas`.
+ * When we do a render to `compute data`, not used in the screen, then we use `FBO`
+ *
+ * In this technique each pixel will hold the `xyz` coordinates in the "texture pixel" `rgb` channels
+ * On each frame, we update the FBO based on the previous FBO
+ * The position of the particles persists and we keep on updating them on each frame.
+ *
+ * CREATING A GPGPU
+ *
+ * First we need to create a brand new offscreen scene (not the one being used)
+ * We then add a `OrthographicCamera` to the scene and position it facing the front of the plane perfectly.
+ * Then we apply a custom shader to the plane, in which we send the `FBO` texture containing the position
+ * of the particles.
+ * We send a `texture` that contain the initial position for each `pixel`.
+ * The `texture` will be sent to the `plane` via a custom `shader`.
+ * The `pixels` of the `plane` won't be shown. Just their `positions` will be updated.
+ * We then calculate the `flow field` on each `pixel`.
+ * Before rendering the real scene, we render that offscreen scene using the 
+ * offscreen camera and save the result in an `FBO`, which will contain the `particles` coordinates.
+ *
+ * CHALLEHNGES
+ * 1. We can't read and write in the same FBO. We need to have two of them and to invert
+ * them on each new update `"ping-pong buffers`
+ * 2. Using pixel as data is difficult because of the various formats and types a pixel can have.
+ * 3. We need to complete the setup with almost nothing on screen until it works.
+ *
+ * `GPUComputationRenderer` class will do most of the heavy lifting
+ * * Creating the scene
+ * * handling the ping-pong buffers
+ * * Setting the color format
+ * * Rendering
+ * * etc.
+ * Better documentation on `GPUComputationRenderer.js`
+ */
+
+/**
  * Base
  */
 // Debug
