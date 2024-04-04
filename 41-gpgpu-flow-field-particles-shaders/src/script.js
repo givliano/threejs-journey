@@ -135,10 +135,17 @@ debugObject.clearColor = '#29191f'
 renderer.setClearColor(debugObject.clearColor)
 
 /**
+ * Load model
+ */
+// Important to note that this model already has the color baked in the texture
+// this was done using a python script (check the class notes).
+const gltf = await gltfLoader.loadAsync('./model.glb');
+
+/**
  * Base Geometry
  */
 const baseGeometry = {};
-baseGeometry.instance = new THREE.SphereGeometry(3);
+baseGeometry.instance = gltf.scene.children[0].geometry;
 baseGeometry.count = baseGeometry.instance.attributes.position.count;
 
 /**
@@ -178,7 +185,6 @@ for (let i = 0; i < baseGeometry.count; i++) {
     baseParticlesTexture.image.data[i4 + 2] = baseGeometry.instance.attributes.position.array[i3 + 2];
     baseParticlesTexture.image.data[i4 + 3] = 0;
 }
-console.log(baseParticlesTexture.image.data);
 
 // Particles variable
 // the `baseParticlesTexture` will be injected in the shader and accessible in the name `uParticles`
@@ -214,19 +220,53 @@ console.log(gpgpu.computation.getCurrentRenderTarget(gpgpu.particlesVariable).te
  */
 const particles = {}
 
+// Create the array for the vertex shader
+// we want to get the center of the pixel to get the proper position
+const particlesUvArray = new Float32Array(baseGeometry.count * 2); // uv coordinates need a pair for each particle
+const sizesArray = new Float32Array(baseGeometry.count);
+
+for (let y = 0; y < gpgpu.size; y++) {
+    for (let x = 0; x < gpgpu.size; x++) {
+        // create an index going from `0` to the amount of particles
+        const i = (y * gpgpu.size + x);
+        const i2 = i * 2;
+
+        const uvX = (x + 0.5) / gpgpu.size; // normalize the X and get the value from the center of the pixel
+        const uvY = (y + 0.5) / gpgpu.size; // normalize the Y and get the value from the center of the pixel
+
+        particlesUvArray[i2 + 0] = uvX;
+        particlesUvArray[i2 + 1] = uvY;
+
+        // Random sizes
+        sizesArray[i] = Math.random();
+    }
+}
+
+
+// Geometry
+// Create an empty geometry which will be fed the result of the FBO
+particles.geometry = new THREE.BufferGeometry();
+// since our geometry doesn't have a `position` and a `size` attribute to render
+// the amount of particles, we set it here so that the particles can be rendered.
+particles.geometry.setDrawRange(0, baseGeometry.count);
+particles.geometry.setAttribute('aParticlesUv', new THREE.BufferAttribute(particlesUvArray, 2));
+particles.geometry.setAttribute('aColor', baseGeometry.instance.attributes.color);
+particles.geometry.setAttribute('aSize', new THREE.BufferAttribute(sizesArray, 1)); 
+
 // Material
 particles.material = new THREE.ShaderMaterial({
     vertexShader: particlesVertexShader,
     fragmentShader: particlesFragmentShader,
     uniforms:
     {
-        uSize: new THREE.Uniform(0.4),
-        uResolution: new THREE.Uniform(new THREE.Vector2(sizes.width * sizes.pixelRatio, sizes.height * sizes.pixelRatio))
+        uSize: new THREE.Uniform(0.07),
+        uResolution: new THREE.Uniform(new THREE.Vector2(sizes.width * sizes.pixelRatio, sizes.height * sizes.pixelRatio)),
+        uParticlesTexture: new THREE.Uniform() // the FBO output
     }
 })
 
 // Points
-particles.points = new THREE.Points(baseGeometry.instance, particles.material)
+particles.points = new THREE.Points(particles.geometry, particles.material)
 scene.add(particles.points)
 
 /**
@@ -252,6 +292,7 @@ const tick = () =>
 
     // GPGPU Update
     gpgpu.computation.compute();
+    particles.material.uniforms.uParticlesTexture.value = gpgpu.computation.getCurrentRenderTarget(gpgpu.particlesVariable).texture;
 
     // Render normal scene
     renderer.render(scene, camera)
