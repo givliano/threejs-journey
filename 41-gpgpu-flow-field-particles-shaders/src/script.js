@@ -61,6 +61,18 @@ import gpgpuParticlesShader from './shaders/gpgpu/particles.glsl';
  * Better documentation on `GPUComputationRenderer.js`
  */
 
+
+// TODO
+// Control the effect based on cursor
+// Use the cursor position to control the effect
+// Add a low poly model and do some RAYCASTING on it
+// similar to cursor interaction in place of particles
+// use an invisible model, with not so many particles and vertices (low poly)
+// retrieve the intersection coordinate
+// send the intersection coordinate to the particles.glsl
+// use the distance from the particle to the cursor coordinate to
+// control the strength of the effect
+
 /**
  * Base
  */
@@ -183,7 +195,7 @@ for (let i = 0; i < baseGeometry.count; i++) {
     baseParticlesTexture.image.data[i4 + 0] = baseGeometry.instance.attributes.position.array[i3 + 0];
     baseParticlesTexture.image.data[i4 + 1] = baseGeometry.instance.attributes.position.array[i3 + 1];
     baseParticlesTexture.image.data[i4 + 2] = baseGeometry.instance.attributes.position.array[i3 + 2];
-    baseParticlesTexture.image.data[i4 + 3] = 0;
+    baseParticlesTexture.image.data[i4 + 3] = Math.random();
 }
 
 // Particles variable
@@ -196,6 +208,18 @@ gpgpu.particlesVariable = gpgpu.computation.addVariable('uParticles', gpgpuParti
 // containing the dependencies (the same `gpgpu.particlesVariable`).
 gpgpu.computation.setVariableDependencies(gpgpu.particlesVariable, [ gpgpu.particlesVariable ]);
 
+// Uniforms
+// Send uniforms to the `shader` material
+gpgpu.particlesVariable.material.uniforms.uTime = new THREE.Uniform(0);
+// Send the delta time so that updates are not tied to screen framerate (things
+// dying faster on higher framerates). 
+// Also, never declare it with 0 to avoid bugs
+gpgpu.particlesVariable.material.uniforms.uDeltaTime = new THREE.Uniform(1);
+gpgpu.particlesVariable.material.uniforms.uBase = new THREE.Uniform(baseParticlesTexture);
+gpgpu.particlesVariable.material.uniforms.uFlowFieldInfluence = new THREE.Uniform(0.5);
+gpgpu.particlesVariable.material.uniforms.uFlowFieldStrength = new THREE.Uniform(2);
+gpgpu.particlesVariable.material.uniforms.uFlowFieldFrequency = new THREE.Uniform(0.5);
+
 // Init
 gpgpu.computation.init();
 
@@ -207,6 +231,7 @@ gpgpu.debug = new THREE.Mesh(
         map: gpgpu.computation.getCurrentRenderTarget(gpgpu.particlesVariable).texture
     })
 );
+gpgpu.debug.visible = false; // disable it after dev
 gpgpu.debug.position.x = 3;
 scene.add(gpgpu.debug);
 
@@ -242,7 +267,6 @@ for (let y = 0; y < gpgpu.size; y++) {
     }
 }
 
-
 // Geometry
 // Create an empty geometry which will be fed the result of the FBO
 particles.geometry = new THREE.BufferGeometry();
@@ -275,6 +299,24 @@ scene.add(particles.points)
 gui.addColor(debugObject, 'clearColor').onChange(() => { renderer.setClearColor(debugObject.clearColor) })
 gui.add(particles.material.uniforms.uSize, 'value').min(0).max(1).step(0.001).name('uSize')
 
+gui
+    .add(gpgpu.particlesVariable.material.uniforms.uFlowFieldInfluence, 'value')
+    .min(0)
+    .max(1)
+    .name('uFlowFieldInfluence');
+
+gui
+    .add(gpgpu.particlesVariable.material.uniforms.uFlowFieldStrength, 'value')
+    .min(0)
+    .max(10)
+    .name('uFlowFieldStrength');
+
+gui
+    .add(gpgpu.particlesVariable.material.uniforms.uFlowFieldFrequency, 'value')
+    .min(0)
+    .max(1)
+    .step(0.001)
+    .name('uFlowFieldStrength');
 /**
  * Animate
  */
@@ -284,13 +326,20 @@ let previousTime = 0
 const tick = () =>
 {
     const elapsedTime = clock.getElapsedTime()
-    const deltaTime = elapsedTime - previousTime
+    // One way to avoid bugs in inactive tabs is to clamp the frameRate so that
+    // the minimum framerate is 30 fps
+    // another is the mod for particle.a in the particle shader
+    // const deltaTime = Math.min(elapsedTime - previousTime, 1 / 30);
+    const deltaTime = Math.min(elapsedTime - previousTime, 1 / 30);
     previousTime = elapsedTime
     
     // Update controls
     controls.update()
 
     // GPGPU Update
+    // update time before computing the changes
+    gpgpu.particlesVariable.material.uniforms.uTime.value = elapsedTime;
+    gpgpu.particlesVariable.material.uniforms.uDeltaTime.value = deltaTime;
     gpgpu.computation.compute();
     particles.material.uniforms.uParticlesTexture.value = gpgpu.computation.getCurrentRenderTarget(gpgpu.particlesVariable).texture;
 

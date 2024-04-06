@@ -18,7 +18,15 @@ void main()
     gl_Position = projectedPosition;
 
     // Point size
-    gl_PointSize = aSize * uSize * uResolution.y;
+
+    // Particle gets biggers, stays at max size and then gets smallers
+    // so its like in the `Fireworks` lesson, but here it will be in the
+    // animated state, so that it dies smoothly, shrinking until disappearing.
+    float sizeIn = smoothstep(0.0, 0.1, particle.a); // goes up fast in smoothstep
+    float sizeOut = 1.0 - smoothstep(0.7, 1.0, particle.a);
+    float size = min(sizeIn, sizeOut);
+    
+    gl_PointSize = size * aSize * uSize * uResolution.y;
     gl_PointSize *= (1.0 / - viewPosition.z);
 
     // Varyings
