@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js'
+import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import GUI from 'lil-gui'
 
 /**
@@ -39,6 +40,35 @@ const placeholder = new THREE.Mesh(
     new THREE.MeshPhysicalMaterial()
 )
 scene.add(placeholder)
+
+/**
+ * Board
+ */
+// NOTE to instantiate a brush we need to send a three shape
+// We'll create two boxes: a large one and a small one poking a whole in the larger
+// a Brush is also a 3js `Obejct3D` instance
+const boardFill = new Brush(new THREE.BoxGeometry(11, 2, 11));
+const boardHole = new Brush(new THREE.BoxGeometry(10, 2.1, 10));
+// NOTE the transformation matrix used by 3js hasn't been updated.
+// It updates is only when rendering to avoid unecessary calculations.
+// That's why we update it manually
+// boardHole.position.y = 0.2;
+// boardHole.updateMatrixWorld();
+
+// Evaluate
+const evaluator = new Evaluator();
+const board = evaluator.evaluate(boardFill, boardHole, SUBTRACTION);
+// NOTE Clear inherited groups from the brushes
+// always clean up useless data
+board.geometry.clearGroups();
+board.material = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    metalness: 0,
+    roughness: 0.3
+});
+board.castShadow = true;
+board.receiveShadow = true;
+scene.add(board);
 
 /**
  * Lights
