@@ -2,7 +2,10 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js'
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
+import CustomShaderMaterial from 'three-custom-shader-material/vanilla';
 import GUI from 'lil-gui'
+import terrainVertexShader from './shaders/terrain/vertex.glsl';
+import terrainFragmentShader from './shaders/terrain/fragment.glsl';
 
 /**
  * Base
@@ -33,13 +36,65 @@ rgbeLoader.load('/spruit_sunrise.hdr', (environmentMap) =>
 })
 
 /**
- * Placeholder
+ * Terrain
  */
-const placeholder = new THREE.Mesh(
-    new THREE.IcosahedronGeometry(2, 5),
-    new THREE.MeshPhysicalMaterial()
-)
-scene.add(placeholder)
+// Geometry
+const geometry = new THREE.PlaneGeometry(10, 10, 500, 500);
+geometry.deleteAttribute('normal');
+geometry.deleteAttribute('uv');
+// NOTE rotate the geometry so that in the shader Y still goes up
+// If it was the `Mesh` it would be the Z in the shader.
+geometry.rotateX(- Math.PI * 0.5);
+
+// Material
+const uniforms = {
+    uTime: new THREE.Uniform(0),
+    uPositionFrequency: new THREE.Uniform(0.2),
+    uStrength: new THREE.Uniform(2),
+    uWarpFrequency: new THREE.Uniform(5),
+    uWarpStrength: new THREE.Uniform(0.5),
+};
+
+gui
+    .add(uniforms.uPositionFrequency, 'value', 0, 1, 0.001).name('uPositionFrequency');
+gui
+    .add(uniforms.uStrength, 'value', 0, 10, 0.001).name('uStrength');
+gui
+    .add(uniforms.uWarpFrequency, 'value', 0, 1, 0.001).name('uWarpFrequency');
+gui
+    .add(uniforms.uWarpStrength, 'value', 0, 1, 0.001).name('uWarpStrength')
+
+const material = new CustomShaderMaterial({
+    // CSM
+    baseMaterial: THREE.MeshStandardMaterial,
+    silent: true,
+    vertexShader: terrainVertexShader,
+    fragmentShader: terrainFragmentShader,
+    uniforms,
+
+    // MeshStandardMaterial
+    metalness: 0,
+    roughness: 0.5,
+    color: 0x85d534
+});
+
+const depthMaterial = new CustomShaderMaterial({
+    // CSM
+    baseMaterial: THREE.MeshDepthMaterial,
+    silent: true,
+    vertexShader: terrainVertexShader,
+    uniforms,
+
+    // MeshDepthMaterial
+    depthPacking: THREE.RGBADepthPacking,
+});
+
+// Mesh
+const terrain = new THREE.Mesh(geometry, material);
+terrain.customDepthMaterial = depthMaterial;
+terrain.receiveShadow = true;
+terrain.castShadow = true;
+scene.add(terrain);
 
 /**
  * Board
@@ -144,6 +199,9 @@ const clock = new THREE.Clock()
 const tick = () =>
 {
     const elapsedTime = clock.getElapsedTime()
+
+    // Uniforms
+    uniforms.uTime.value = elapsedTime;
 
     // Update controls
     controls.update()
