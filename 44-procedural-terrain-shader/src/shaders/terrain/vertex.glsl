@@ -4,6 +4,9 @@ uniform float uWarpFrequency;
 uniform float uWarpStrength;
 uniform float uTime;
 
+varying vec3 vPosition;
+varying float vUpDot;
+
 #include ../includes/simplexNoise2d.glsl
 
 // NOTE elevation only varies on the `x` and `z` axes.
@@ -52,4 +55,11 @@ void main()
     vec3 toA = normalize(positionA - csm_Position);
     vec3 toB = normalize(positionB - csm_Position);
     csm_Normal = cross(toA, toB);
+
+    // Varyings
+    vPosition = csm_Position;
+    vPosition.xz += uTime * 0.2; // apply the uTime to make the snow noise work in the fragment offsetting the position.
+    // get the dot product of the normal and a vector going perfectly up for the rock in the fragment
+    // If its facing the UP we get `white` (1.0), otherwise if its perpendicular we get `black` (0.0).
+    vUpDot = dot(csm_Normal, vec3(0.0, 1.0, 0.0)); 
 }
