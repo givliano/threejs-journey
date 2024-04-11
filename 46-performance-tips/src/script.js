@@ -1,5 +1,15 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils';
+import Stats from 'stats.js';
+
+/**
+ * Stats
+ */
+const stats = new Stats();
+stats.showPanel(0);
+document.body.appendChild(stats.dom);
+
 
 /**
  * Base
@@ -121,6 +131,7 @@ const clock = new THREE.Clock()
 
 const tick = () =>
 {
+    stats.begin();
     const elapsedTime = clock.getElapsedTime()
 
     // Update test mesh
@@ -134,6 +145,7 @@ const tick = () =>
 
     // Call tick again on the next frame
     window.requestAnimationFrame(tick)
+    stats.end();
 }
 
 tick()
@@ -142,15 +154,31 @@ tick()
  * Tips
  */
 
+// NOTE using `Spector.js` try to lower the ammount of draw calls
+
 // // Tip 4
-// console.log(renderer.info)
+console.log(renderer.info)
+
+// // Tip 5
+// Optimize the code in the `tick` function. Try to use native JS code.
 
 // // Tip 6
+// Dispose everything you're not using from the scene.
 // scene.remove(cube)
 // cube.geometry.dispose()
 // cube.material.dispose()
 
+// // Tip 7
+// Avoid 3js lights. Prefer baked lights, or cheap lights (ambientLight, directionalLight, hemisphereLight).
+//
+// Tip 8
+// Avoid adding or removing lights. ALl the materials supporting lights will have to be recompiled
+//
+// Tip 9
+// Avoid shadows. Use `backed` shadows.
+
 // // Tip 10
+// Optimize shadow maps, make them as small as possible with the mapping
 // directionalLight.shadow.camera.top = 3
 // directionalLight.shadow.camera.right = 6
 // directionalLight.shadow.camera.left = - 6
@@ -162,6 +190,8 @@ tick()
 // scene.add(cameraHelper)
 
 // // Tip 11
+// use `castShadow` andd `receiveShadow` wisely
+// Receiving shadows when there are no objects on top of it to cast it is a waste of a render.
 // cube.castShadow = true
 // cube.receiveShadow = false
 
@@ -175,12 +205,40 @@ tick()
 // floor.receiveShadow = true
 
 // // Tip 12
+// Deactivate shadow auto update
 // renderer.shadowMap.autoUpdate = false
 // renderer.shadowMap.needsUpdate = true
 
+// Tip 13
+//// Resize textures
+// Tetures take a lot of space in GPU memory, specially mipmaps
+// Not the weight of the file, but the resolution that weights
+// Use the minimal resolution possible to optimize
+// Make the texture as small as possible.
+// Avoid reaching the limit of the GPU
+
+// Tip 14
+// Always use power of 2 resolutions
+// They dont have to be a square
+// Also, keep a power of 2 resolution for height and for width
+//
+// Tip 15
+// Use the riht format to reduce load time
+// Yse `tinyPNG` to optimize files
+// COmpare the advangetes between `png` and `jpeg`.
+// Have a look at the `basis` format
+//
+// Tip 16 
+// Irrelevant nowadays
+//
+// // Tip 17
+// Avoid updating the vertices in the tick function. Always with shaders
+
 // // Tip 18
+// const geometries = [];
 // for(let i = 0; i < 50; i++)
 // {
+    // const geometry = new THREE.BoxBufferGeometry(0.5, 0.5, 0.5);
 //     const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5)
 
 //     const material = new THREE.MeshNormalMaterial()
@@ -196,6 +254,8 @@ tick()
 // }
 
 // // Tip 19
+// Materials
+// Create only one material and use it on multiple meshes
 // for(let i = 0; i < 50; i++)
 // {
 //     const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5)
@@ -213,6 +273,8 @@ tick()
 // }
 
 // // Tip 20
+// Use cheap materials like `MeshBasicMaterial`, `MeshLambertMaterial`, `MeshPhongMaterial`
+// Heavier ones like `MeshStandardMaterial` and `MeshPhysicalMaterial` are better avoided
 // const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5)
     
 // for(let i = 0; i < 50; i++)
@@ -230,21 +292,47 @@ tick()
 // }
 
 // // Tip 22
-// const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5)
+// Use instanced mesh
+const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5)
 
-// const material = new THREE.MeshNormalMaterial()
-    
-// for(let i = 0; i < 50; i++)
-// {
-//     const mesh = new THREE.Mesh(geometry, material)
-//     mesh.position.x = (Math.random() - 0.5) * 10
-//     mesh.position.y = (Math.random() - 0.5) * 10
-//     mesh.position.z = (Math.random() - 0.5) * 10
-//     mesh.rotation.x = (Math.random() - 0.5) * Math.PI * 2
-//     mesh.rotation.y = (Math.random() - 0.5) * Math.PI * 2
+const material = new THREE.MeshNormalMaterial()
 
-//     scene.add(mesh)
-// }
+// A lot better for performance to use one `instancedMesh` and change its matrix.
+// This way we use it only one draw call
+const mesh = new THREE.InstancedMesh(geometry, material, 50);
+// If you intend to `change` these matrixes in the `tick` function, add this to the `InstancedMesh`
+mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+scene.add(mesh);
+
+for(let i = 0; i < 50; i++)
+{
+    const position = new THREE.Vector3(
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 10,
+    );
+
+    const quaternion = new THREE.Quaternion();
+    // Euler if better for people bad at math haha.
+    quaternion.setFromEuler(new THREE.Euler(
+        (Math.random() - 0.5) * Math.PI * 20,
+        (Math.random() - 0.5) * Math.PI * 2,
+        0
+    ));
+
+    const matrix = new THREE.Matrix4();
+    matrix.makeRotationFromQuaternion(quaternion);
+    matrix.setPosition(position);
+    mesh.setMatrixAt(i, matrix);
+ // const mesh = new THREE.Mesh(geometry, material)
+ // mesh.position.x = (Math.random() - 0.5) * 10
+ // mesh.position.y = (Math.random() - 0.5) * 10
+ // mesh.position.z = (Math.random() - 0.5) * 10
+ // mesh.rotation.x = (Math.random() - 0.5) * Math.PI * 2
+ // mesh.rotation.y = (Math.random() - 0.5) * Math.PI * 2
+
+ scene.add(mesh)
+}
 
 // // Tip 29
 // renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
