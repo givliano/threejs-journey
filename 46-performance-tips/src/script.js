@@ -334,10 +334,53 @@ for(let i = 0; i < 50; i++)
  scene.add(mesh)
 }
 
+// Tip 23
+// Low poly
+// The fewer polygons, the better
+// If you need details use normal maps
+
+// Tip 24
+// Draco compression
+// If it needs lots of details or complex geometries, use `Draco compression`
+// the drawbacks are a potential freeze uncompressing the geometry, and you have to load th
+// Draco libs
+//
+// Tip 25
+// Gzip
+// Server side compression
+// See if you can configure gzip to handle `.glb`, `.gltf`, `.obj` and more
+//
+// // Tip 26
+// Cameras and field of view
+// When objects are out of FOV they are not rendered
+// Its food to reduce the camera FOV
+//
+// // Tip 27
+// Reduce the `near` and `far` properties of the camera
+
 // // Tip 29
+// Pixel ration
+// Don't use the standard one. Above 2 is useless.
 // renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+//
+// // Tip 30
+// Power preferences
+// We can give a hint of power preferences on the instantiation of the WEbGLRenderer
+// in `powerPreferences`. Especially if there are framerates issues
 
 // // Tip 31, 32, 34 and 35
+// Anti alias: if the pixel ratio is 2 check if antialias is necessary
+// 
+// Try to merge the custom passes into one
+//
+// You can specify the precision of the shaders by changing their `precision` property.
+// Like `lowp`, `mediump` or `highp`.
+// That won't work on `RawShaderMaterial`
+//
+// Keep your shader code as simple as possible
+// Avoid `if` statemens
+// Make good use of `swizzles` and `built-in` functions.
+//
 // const shaderGeometry = new THREE.PlaneGeometry(10, 10, 256, 256)
 
 // const shaderMaterial = new THREE.ShaderMaterial({
@@ -351,12 +394,19 @@ for(let i = 0; i < 50; i++)
 //         uniform float uDisplacementStrength;
 
 //         varying vec2 vUv;
+//
+//         varying vColor;
 
 //         void main()
 //         {
 //             vec4 modelPosition = modelMatrix * vec4(position, 1.0);
 
 //             float elevation = texture2D(uDisplacementTexture, uv).r;
+//             // NOTE prefer a manual clamp, removing the if
+//             elevation = clamp(elevation, 0.5, 1.0);
+//             // Or
+//             elevation = max(elevation, 0.5);
+//
 //             if(elevation < 0.5)
 //             {
 //                 elevation = 0.5;
@@ -365,8 +415,17 @@ for(let i = 0; i < 50; i++)
 //             modelPosition.y += elevation * uDisplacementStrength;
 
 //             gl_Position = projectionMatrix * viewMatrix * modelPosition;
+//
+//             // NOTE calculating color in vertex shader instead of in the fragment like below
+//             // Afterwards the code in the fragment could be removed
+//             // COLOR
+//             float colorElevation = max(elevation, 0.25);
+//             vec3 depthColor = vec3(1.0, 0.1, 0.1);
+//             vec3 surfaceColor = vec3(0.1, 0.0, 0.5);
+//             vec3 finalColor = mix(depthColor, surfaceColor, elevation);
 
 //             vUv = uv;
+//             vColor = finalColor;
 //         }
 //     `,
 //     fragmentShader: `
@@ -384,6 +443,9 @@ for(let i = 0; i < 50; i++)
 
 //             vec3 depthColor = vec3(1.0, 0.1, 0.1);
 //             vec3 surfaceColor = vec3(0.1, 0.0, 0.5);
+//             // NOTE the code below can be substituted by
+//             finalColor = mix(depthColor, surfaceColor, elevation);
+//             // Simplify when possivble
 //             vec3 finalColor = vec3(0.0);
 //             finalColor.r += depthColor.r + (surfaceColor.r - depthColor.r) * elevation;
 //             finalColor.g += depthColor.g + (surfaceColor.g - depthColor.g) * elevation;
@@ -393,6 +455,13 @@ for(let i = 0; i < 50; i++)
 //         }
 //     `
 // })
+//
+// NOTE try to use textures instead of perlin noise, its a lot better.
+//
+// NOTE `Uniforms` have a cost. If they are going to be static, like a CONST, then use `DEFINE`.
+//
+// NOTE Do the calculations on the vertex shaders and send it via `varyings`
+// Usually we have a lot less verteices than fragments
 
 // const shaderMesh = new THREE.Mesh(shaderGeometry, shaderMaterial)
 // shaderMesh.rotation.x = - Math.PI * 0.5
