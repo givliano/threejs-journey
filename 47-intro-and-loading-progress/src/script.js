@@ -1,12 +1,38 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { gsap } from 'gsap';
+
+// NOTE
+// We want a black overlay that fades out as the loading screen
+// Put a plane in the scene and use a shader to move it in front of the camera
 
 /**
  * Loaders
  */
-const gltfLoader = new GLTFLoader()
-const cubeTextureLoader = new THREE.CubeTextureLoader()
+// NOTE the `LoadingManager` will controll the loading events
+const loadingBarEl = document.querySelector('.loading-bar');
+const loadingManager = new THREE.LoadingManager(
+    // Loaded
+    () => {
+        // NOTE add a timer to make the animation smooth.
+        window.setTimeout(() => {
+            gsap.to(overlayMaterial.uniforms.uAlpha, { duration: 3, value: 0 });
+            loadingBarEl.classList.add('ended');
+            loadingBarEl.style.transform = ''; // NOTE remove the transform in inline style.
+        }, 500);
+    },
+    // Progress
+    // PARAMS: url of the assets, how much the assets were loaded, the total number of assets to load
+    (itemUrl, itemsLoaded, itemsTotal) => {
+        // NOTE we can mimic a bad bandwidth to test it.
+        const progressRatio = itemsLoaded / itemsTotal;
+        loadingBarEl.style.transform = `scaleX(${progressRatio})`;
+        console.log(loadingBarEl.style.transform);
+    }
+)
+const gltfLoader = new GLTFLoader(loadingManager)
+const cubeTextureLoader = new THREE.CubeTextureLoader(loadingManager)
 
 /**
  * Base
@@ -19,6 +45,45 @@ const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
+
+/** NOTE
+ * Overlay for loading
+ */
+// We want to know when everything is loaded
+// There is only one model in the scene, but we are loading multiple assets:
+// * The 6 images of the environment map
+// * The models geometries
+// * All the textures used in the model
+const overlayGeometry = new THREE.PlaneGeometry(2, 2, 1, 1);
+// const overlayMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+const overlayMaterial = new THREE.ShaderMaterial({
+    transparent: true, // NOTE add transparency to the overlay
+    uniforms: {
+        uAlpha: new THREE.Uniform(1.0)
+    },
+    vertexShader: `
+        void main()
+        {
+            // NOTE if we just remove the transformation matrixes we render the rect
+            // in the center of the screen.
+            // The size will be wrong because the "CLIP SPACE" goes from -1.0 to 1.0,
+            // so the lpanes needs to have a width and height of 2, 2, instead of 1, 1
+            gl_Position = vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform float uAlpha;
+
+        void main()
+        {
+            gl_FragColor = vec4(0.0, 0.0, 0.0, uAlpha);
+        }
+    `,
+    // wireframe: true
+});
+
+const overlay = new THREE.Mesh(overlayGeometry, overlayMaterial);
+scene.add(overlay);
 
 /**
  * Update all materials
