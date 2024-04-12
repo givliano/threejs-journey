@@ -6,6 +6,7 @@ import { gsap } from 'gsap';
 // NOTE
 // We want a black overlay that fades out as the loading screen
 // Put a plane in the scene and use a shader to move it in front of the camera
+// It would be better to animate a plane with WebGL still.
 
 /**
  * Loaders
