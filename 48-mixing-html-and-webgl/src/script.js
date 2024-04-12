@@ -3,6 +3,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { gsap } from 'gsap'
 
+// NOTE
+// Integrate HTML into the scene with interest points in the model
+
 /**
  * Loaders
  */
@@ -128,6 +131,17 @@ gltfLoader.load(
 )
 
 /**
+ * Points of interest (HTML)
+ */
+// NOTE the HTML elements
+const points = [
+    {
+        position: new THREE.Vector3(1.55, 0.3, - 0.6),
+        element: document.querySelector('.point-0'),
+    }
+]
+
+/**
  * Lights
  */
 const directionalLight = new THREE.DirectionalLight('#ffffff', 3)
@@ -194,6 +208,21 @@ const tick = () =>
 {
     // Update controls
     controls.update()
+
+    // Go through each point
+    for (const point of points) {
+        // NOTE we need to get the 2D screen position of the 3D scene position of the point
+        // clone the point position so we dont change it
+        const screenPosition = point.position.clone();
+        // Method to project the 3d coordinate into the 2d space of the screen
+        // we get a value that goes from `-1` to `+1`
+        // we need to convert it to pixels coordinates
+        screenPosition.project(camera);
+
+        const translateX = screenPosition.x * sizes.width / 2;
+        const translateY = - screenPosition.y * sizes.height / 2;
+        point.element.style.transform = `translate3d(${translateX}px, ${translateY}px, 0)`;
+    }
 
     // Render
     renderer.render(scene, camera)
