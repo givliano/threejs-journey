@@ -9,6 +9,8 @@ import { gsap } from 'gsap'
 /**
  * Loaders
  */
+// if the scene is ready
+let sceneReady = false;
 const loadingBarElement = document.querySelector('.loading-bar')
 const loadingManager = new THREE.LoadingManager(
     // Loaded
@@ -23,7 +25,9 @@ const loadingManager = new THREE.LoadingManager(
             // Update loadingBarElement
             loadingBarElement.classList.add('ended')
             loadingBarElement.style.transform = ''
-        }, 500)
+        }, 500);
+
+        window.setTimeout(() => sceneReady = 3000, 3000);
     },
 
     // Progress
@@ -133,11 +137,21 @@ gltfLoader.load(
 /**
  * Points of interest (HTML)
  */
+const raycaster = new THREE.Raycaster()
 // NOTE the HTML elements
+// This should be all create JS side...
 const points = [
     {
         position: new THREE.Vector3(1.55, 0.3, - 0.6),
         element: document.querySelector('.point-0'),
+    },
+    {
+        position: new THREE.Vector3(0.5, 0.8, - 1.6),
+        element: document.querySelector('.point-1'),
+    },
+    {
+        position: new THREE.Vector3(1.6, -1.3, -0.7),
+        element: document.querySelector('.point-2'),
     }
 ]
 
@@ -210,18 +224,38 @@ const tick = () =>
     controls.update()
 
     // Go through each point
-    for (const point of points) {
-        // NOTE we need to get the 2D screen position of the 3D scene position of the point
-        // clone the point position so we dont change it
-        const screenPosition = point.position.clone();
-        // Method to project the 3d coordinate into the 2d space of the screen
-        // we get a value that goes from `-1` to `+1`
-        // we need to convert it to pixels coordinates
-        screenPosition.project(camera);
+    if (sceneReady) {
+        for (const point of points) {
+            // NOTE we need to get the 2D screen position of the 3D scene position of the point
+            // clone the point position so we dont change it
+            const screenPosition = point.position.clone();
+            // Method to project the 3d coordinate into the 2d space of the screen
+            // we get a value that goes from `-1` to `+1`
+            // we need to convert it to pixels coordinates
+            screenPosition.project(camera);
 
-        const translateX = screenPosition.x * sizes.width / 2;
-        const translateY = - screenPosition.y * sizes.height / 2;
-        point.element.style.transform = `translate3d(${translateX}px, ${translateY}px, 0)`;
+            raycaster.setFromCamera(screenPosition, camera);
+            // test agaisnt all objects in the scene
+            const intersects = raycaster.intersectObjects(scene.children, true);
+
+            if (intersects.length === 0) {
+                point.element.classList.add('visible');
+            } else {
+                // compare the distance of the intersection
+                const intersectionDistance = intersects[0].distance; // the closest is the first in the array
+                const pointDistance = point.position.distanceTo(camera.position); // the distance to the HTML el
+
+                if (intersectionDistance < pointDistance) {
+                    point.element.classList.remove('visible');
+                } else {
+                    point.element.classList.add('visible');
+                }
+            }
+
+            const translateX = screenPosition.x * sizes.width / 2;
+            const translateY = - screenPosition.y * sizes.height / 2;
+            point.element.style.transform = `translate3d(${translateX}px, ${translateY}px, 0)`;
+        }
     }
 
     // Render
