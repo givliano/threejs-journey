@@ -1,0 +1,7 @@
+body {
+  height: 100vh;
+}
+
+canvas {
+  height: 100vh !important;
+}
