@@ -12,6 +12,12 @@ export default function Experience() {
     useFrame((state, delta) => {
         cubeRef.current.rotation.y += delta;
         // groupRef.current.rotation.y += delta;
+        // NOTE We need an angle and then use that angle on a `sin()` and `cos()`
+        // in order to get the `x` and `z` coordinates
+        // const angle = state.clock.elapsedTime;
+        // state.camera.position.x = Math.sin(angle) * 8;
+        // state.camera.position.z = Math.cos(angle) * 8;
+        // state.camera.lookAt(0, 0, 0);
     });
 
     const { camera, gl } = useThree();
@@ -50,7 +56,7 @@ export default function Experience() {
                 rotation-x={ - Math.PI / 2}
                 scale={ 10 }
             >
-                <planeGeometry args={[ 5, 5, 64, 64 ]}/>
+                <planeGeometry />
                 <meshStandardMaterial color="green" />
             </mesh>
 
