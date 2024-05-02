@@ -229,7 +229,7 @@ function Bounds({ length = 1 }) {
                 <CuboidCollider 
                     args={[ 2, 0.1, 2 * length ]} 
                     position={[ 0, - 0.1, - (length * 2) + 2 ]}
-                    restitution={ 2 }
+                    restitution={ 0.2 }
                     friction={ 1 }
                 />
             </RigidBody>
@@ -254,7 +254,7 @@ export function Level({ count = 10, types = [ BlockSpinner, BlockAxe, BlockLimbo
 
             { blocks.map((Block, i) => <Block key={ i } position={[ 0, 0, - (i + 1) * 4 ]} /> ) }
 
-            <BlockEnd position={[ 0, 0, - (count + 1) * 4 ]} />
+            <BlockEnd position={[ 0, 0.1, - (count + 1) * 4 ]} />
 
             <Bounds length={ count + 2 } />
         </>
