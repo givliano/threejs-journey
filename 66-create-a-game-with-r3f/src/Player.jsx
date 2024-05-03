@@ -1,11 +1,24 @@
 import { useKeyboardControls } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { RigidBody, useRapier } from "@react-three/rapier";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import * as THREE from 'three';
+import useGame from "./stores/useGame";
 
 export default function Player() {
     const body = useRef();
     const { rapier, world } = useRapier();
+
+    // Create a cache of the camera position and target to be able to interpolate
+    // the old values to the new ones
+    const [ smoothedCameraPosition ] = useState(() => new THREE.Vector3(10, 10, 10));
+    const [ smoothedCameraTarget ] = useState(() => new THREE.Vector3());
+
+    const start = useGame((state) => state.start);
+    const end = useGame((state) => state.end);
+    const restart = useGame((state) => state.restart);
+    // To know if the player has reached the end of the level we must know the total length of the course
+    const blocksCount = useGame((state) => state.blocksCount);
 
     // NOTE retrieve the keys and actions with the hook
     // `subscribeKeys` allow us to list to changes in the state
@@ -27,7 +40,27 @@ export default function Player() {
         }
     }
 
+    // Call this function whenever the phase is `ready`
+    // Use middleware to subscribe to state changes
+    const reset = () => {
+        // `setTranslation` to put the ball back to the origin
+        // `setLinvel` to remove any translation force (velocity)
+        // `setAngvel` to remove any angular force (velocity)
+        body.current.setTranslation({ x: 0, y: 1, z: 0 });// move to initial position
+        body.current.setLinvel({ x: 0, y: 0, z: 0 });
+        body.current.setAngvel({ x: 0, y: 0, z: 0 });
+    }
+
     useEffect(() => {
+        // Send selector and a function to call when the property changes, same as `phase` changes
+        const unsubscribeReset = useGame.subscribe(
+            (state) => state.phase,
+            (value) => {
+                if (value === 'ready') {
+                    reset();
+                }
+            }
+        );
         const unsubscribeJump = subscribeKeys(
             // SELECTOR
             // Listen to the event in the state
@@ -38,14 +71,24 @@ export default function Player() {
             }
         );
 
+
+        const unsubscribeAny = subscribeKeys(() => {
+            start();
+        });
+
         return () => {
             // Clean up the handler when hot reloading in dev mode.
+            unsubscribeReset();
             unsubscribeJump();
+            unsubscribeAny();
         }
     }, []);
 
     // NOTE runs on each frame
     useFrame((state, delta) => {
+        /**
+         * CONTROLS
+        */
         const { forward, backward, leftward, rightward }= getKeys();
 
         // Provide both at the beginning to avoid multiple registers from the keys
@@ -79,12 +122,46 @@ export default function Player() {
 
         body.current.applyImpulse(impulse);
         body.current.applyTorqueImpulse(torque);
+
+        /**
+         * CAMERA
+         */
+        const bodyPosition = body.current.translation();
+        
+        const cameraPosition = new THREE.Vector3();
+        cameraPosition.copy(bodyPosition);
+        cameraPosition.y += 0.65;
+        cameraPosition.z += 2.25;
+
+        // Create a target so that the camera looks a little above the ball;
+        const cameraTarget = new THREE.Vector3();
+        cameraTarget.copy(bodyPosition);
+        cameraTarget.y += 0.25;
+
+        // Use the delta to avoid framerates being different problems
+        smoothedCameraPosition.lerp(cameraPosition, 5 * delta);
+        smoothedCameraTarget.lerp(cameraTarget, 5 * delta);
+
+        state.camera.position.copy(smoothedCameraPosition);
+        state.camera.lookAt(smoothedCameraTarget);
+
+        /**
+         * Phases
+         */
+        if (bodyPosition.z < (- (blocksCount * 4 + 2))) {
+            end();
+        }
+
+        if (bodyPosition.y < - 4) {
+            console.log('ahh')
+            restart();
+        }
     });
 
     return (
         <RigidBody 
             ref={ body }
-            canSleep 
+            canSleep={ false }
             colliders="ball" 
             restitution={ 0.2 } 
             friction={ 1 } 
